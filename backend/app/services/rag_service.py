@@ -19,8 +19,9 @@ def _build_knowledge_base_tool(user_id: int, doc_id: str):
     """构建限定 user_id/doc_id 的知识库检索工具"""
     from langchain_core.tools import tool
 
-    @tool
+    @tool   # 将原本的函数包装成LangChain专属的Tool对象，方便Agent调用
     def search_knowledge_base(query: str) -> str:
+        # 这里的文字会转变为Tool对象的description，Agent在调用时会显示给模型，提示模型如何使用该工具
         """在用户上传的私有知识库文档中检索与 query 最相关的内容片段，返回拼接后的文本。"""
         try:
             docs = vector_store_service.similarity_search(user_id=user_id, doc_id=doc_id, query=query)
@@ -33,7 +34,7 @@ def _build_knowledge_base_tool(user_id: int, doc_id: str):
 
         return "\n\n".join(doc.page_content for doc in docs)
 
-    return search_knowledge_base
+    return search_knowledge_base  # 闭包，返回一个函数对象，函数内部引用了 user_id 和 doc_id，确保检索工具只能访问指定用户和文档的知识库内容
 
 
 def _build_agent(user_id: int, doc_id: str):
@@ -43,7 +44,7 @@ def _build_agent(user_id: int, doc_id: str):
 
     settings = get_settings()
 
-    tools = [_build_knowledge_base_tool(user_id, doc_id)]
+    tools = [_build_knowledge_base_tool(user_id, doc_id)]  # 列表中是Tool对象
 
     if settings.enable_web_search and settings.tavily_api_key:
         from langchain_tavily import TavilyExtract, TavilySearch

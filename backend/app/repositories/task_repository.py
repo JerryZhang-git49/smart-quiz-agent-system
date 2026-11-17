@@ -19,11 +19,11 @@ async def create_task(
     question_count: int,
     difficulty: str,
 ) -> None:
-    pool = get_mysql_pool()
+    pool = get_mysql_pool()  #获取连接池
     if pool is None:
-        return
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
+        return   # 防御性
+    async with pool.acquire() as conn:   # 从池子里选一个连接
+        async with conn.cursor() as cur:   # 获取游标
             await cur.execute(
                 "INSERT INTO quiz_tasks (task_id, user_id, user_input, question_count, difficulty, status) "
                 "VALUES (%s, %s, %s, %s, %s, 'pending')",
@@ -39,14 +39,15 @@ async def update_task_status(
 ) -> None:
     pool = get_mysql_pool()
     if pool is None:
-        return
+        return   # 防御性
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 "UPDATE quiz_tasks SET status = %s, result_json = %s, error_message = %s WHERE task_id = %s",
                 (
                     status,
-                    json.dumps(result_json, ensure_ascii=False) if result_json else None,
+                    json.dumps(result_json, ensure_ascii=False) if result_json else None,  
+                    # 把字典转成 JSON 字符串，MySQL 的数据类型里没有“Python 字典”这种结构。所以要把大模型生成的题目字典，压扁成 JSON 字符串
                     error_message,
                     task_id,
                 ),
@@ -66,9 +67,11 @@ async def get_task(task_id: str) -> Optional[dict]:
             row = await cur.fetchone()
             if row and row.get("result_json"):
                 if isinstance(row["result_json"], str):
-                    row["result_json"] = json.loads(row["result_json"])
+                    row["result_json"] = json.loads(row["result_json"])  
+                    # 把 JSON 字符串转成字典，从 MySQL 拿出来的是个 JSON 字符串，前端/业务层没法用。所以要转回 Python 字典。
             return row
 
 
 # Need the import for DictCursor
+#默认情况下，数据库查出来的结果是一个元组 (1, 'completed', '...')。用 DictCursor，查出来的结果直接变成字典 {"task_id": 1, "status": "completed"}。这极大地方便了后面 row.get("result_json") 的操作。
 import aiomysql

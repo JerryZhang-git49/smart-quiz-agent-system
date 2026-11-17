@@ -4,8 +4,46 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 
+from pydantic import Field
+
 
 class Settings(BaseSettings):
+    # 学习建议
+    study_timezone: str = "Asia/Shanghai"
+    study_advice_timeout_seconds : float = Field(
+        default = 25.0,
+        gt = 0,
+        le = 60,
+    )
+
+    # Rerank
+    enable_rerank: bool = False   # 是否启用 Rerank（重排序）功能。启用后，模型会对生成的题目进行排序，优先返回更符合用户需求的题目。
+
+    # 第一阶段：向量召回数量
+    kb_recall_k : int = Field(default = 10, gt = 0, le = 100)
+
+    # 第二阶段：Rerank 之后的最终返回数量
+    kb_rerank_k : int = Field(default = 4, gt = 0, le = 100)
+
+    # Rerank模型
+    rerank_model: str = "gte_rerank"
+
+    # 百炼原生 Rerank 接口，不是 Embedding 的 compatible-mode 地址
+    rerank_api_url: str = (
+        "https://dashscope.aliyuncs.com"
+        "/api/v1/services/rerank/text-rerank"
+    )
+
+    # 留空时使用现有 DASHSCOPE_API_KEY
+    rerank_api_key: str = ""
+
+    # 单次重排的总等待预算
+    rerank_timeout_seconds: float = Field(
+        default=3.0,
+        gt=0,
+        le=30,
+    )
+
     # DeepSeek
     deepseek_api_key: str = "sk-xxx"
     deepseek_base_url: str = "https://api.deepseek.com"

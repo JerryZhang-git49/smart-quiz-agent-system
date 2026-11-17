@@ -25,7 +25,7 @@ SUPPORTED_EXTENSIONS = {"pdf", "docx", "md", "txt"}
 
 
 def _get_extension(filename: str) -> str:
-    _, ext = os.path.splitext(filename)
+    _, ext = os.path.splitext(filename)   # 分离文件名和扩展名
     return ext.lstrip(".").lower()
 
 
@@ -49,13 +49,14 @@ async def handle_upload(user_id: int, filename: str, content: bytes) -> Knowledg
             f"知识库文档数量已达上限（最多 {settings.kb_max_documents_per_user} 篇），请先删除部分文档"
         )
 
-    doc_id = f"doc_{uuid.uuid4().hex[:12]}"
+    doc_id = f"doc_{uuid.uuid4().hex[:12]}"   # 生成唯一ID，如 doc_a3f7b2c9d1e4
 
-    os.makedirs(settings.kb_upload_dir, exist_ok=True)
+    os.makedirs(settings.kb_upload_dir, exist_ok=True)   # 创建上传目录（不存在则创建）
     file_path = os.path.join(settings.kb_upload_dir, f"{doc_id}.{file_type}")
     with open(file_path, "wb") as f:
         f.write(content)
 
+    # 写入数据库（状态=processing）
     await knowledge_repository.create_document(
         doc_id=doc_id,
         user_id=user_id,

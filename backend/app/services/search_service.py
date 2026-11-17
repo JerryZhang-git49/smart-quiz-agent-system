@@ -16,8 +16,8 @@ AGENT_TIMEOUT_SECONDS = 120
 
 def _build_agent():
     """构建知识获取 Agent（带 3 个 Tavily 工具）"""
-    from langchain_core.callbacks import AsyncCallbackHandler
-    from langgraph.prebuilt import create_react_agent
+    from langchain_core.callbacks import AsyncCallbackHandler  # 回调钩子，记录日志
+    from langgraph.prebuilt import create_react_agent   # ReAct Agent 工厂函数
     from langchain_openai import ChatOpenAI
     from langchain_tavily import TavilyExtract, TavilySearch
 
@@ -62,7 +62,7 @@ def _build_agent():
         name="tavily_search_basic",
         description="轻量搜索，返回最多 10 条结果的摘要。适合首轮广泛搜索，快速了解主题全貌，帮助判断正确领域。",
         max_results=10,
-        include_raw_content=False,
+        include_raw_content=False,    # 只返回摘要，不含完整内容
         include_answer=False,
         tavily_api_key=settings.tavily_api_key,
     )
@@ -72,7 +72,7 @@ def _build_agent():
         name="tavily_search_deep",
         description="深度搜索，返回最多 10 条结果的完整页面内容。适合深入了解专业、小众或容易混淆的主题，获取详细知识。",
         max_results=10,
-        include_raw_content=True,
+        include_raw_content=True,    # 返回完整内容，便于深入分析
         include_answer=False,
         tavily_api_key=settings.tavily_api_key,
     )
@@ -135,15 +135,15 @@ async def fetch_knowledge_context(user_input: str) -> str:
         t1 = time.monotonic()
         result = await asyncio.wait_for(
             agent.ainvoke(
-                {"messages": [{"role": "user", "content": user_input}]},
-                config={"recursion_limit": 10, "callbacks": [tool_logger]},
+                {"messages": [{"role": "user", "content": user_input}]},   # Agent维护的信息列表，包括User、AI、Tool的交互记录；每次循环都会追加内容，messages 列表不仅记录了循环的过程，更是大模型做出下一步决策的唯一依据。它必须靠看前面的 ToolMessage 才知道搜到了什么。
+                config={"recursion_limit": 10, "callbacks": [tool_logger]},   # 大模型最多调用十次工具，并记录工具调用日志
             ),
             timeout=AGENT_TIMEOUT_SECONDS,
         )
         elapsed = round((time.monotonic() - t1) * 1000)
 
         # 打印 Agent 完整消息链路用于调试
-        messages = result.get("messages", [])
+        messages = result.get("messages", [])  # 获取所有消息
         logger.info(
             "search_agent_completed",
             elapsed_ms=elapsed,
@@ -163,7 +163,7 @@ async def fetch_knowledge_context(user_input: str) -> str:
             )
 
         # 提取 Agent 最终回复
-        content = result["messages"][-1].content
+        content = result["messages"][-1].content   # messages 列表中最后一条消息是 Agent 的最终输出
         if not content:
             logger.warning("search_agent_empty_response")
             return ""

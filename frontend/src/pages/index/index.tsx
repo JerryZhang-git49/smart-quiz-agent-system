@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { View, Text, Textarea, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { generateQuizAsync, pollQuizTask, getCachedUser, getQuizHistory, waitForLogin } from '../../services/api'
+import { 
+  generateQuizAsync,      // ← 创建异步生成任务
+  pollQuizTask,           // ← 轮询任务状态
+  getCachedUser,          // ← 获取缓存的用户信息
+  getQuizHistory,         // ← 获取闯关历史
+  waitForLogin            // ← 等待登录完成
+} from '../../services/api'
 import type { UserBrief, QuizHistoryItem } from '../../services/api'
 import './index.scss'
 
