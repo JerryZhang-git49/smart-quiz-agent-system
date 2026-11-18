@@ -88,3 +88,25 @@ async def handle_study_advice(
         # 即使模型最后超时，已经成功读取的时间仍然可以使用
         clock = readings[-1] if readings else None
 
+        if clock:
+            advice = (
+                f"建议先学习 {clock.suggested_study_minutes} 分钟，"
+                f"再休息 {clock.suggested_break_minutes} 分钟。"
+                f"{clock.tip}"
+                "本轮只完成一个小目标，例如做三道题并复习错题。"
+            )
+        else:
+            advice = (
+                "建议先选择一个小知识点，安排一轮短时学习，"
+                "完成练习后休息，再根据状态决定是否继续。"
+            )
+
+        return StudyAdviceResponse(
+            advice = advice,
+            clock = clock,
+            use_tools = (
+                ["get_current_time_and_tip"] if readings else []
+            ),
+            degraded = True,
+        )
+

@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1.routes import health, knowledge, quiz, report, user
+from app.api.v1.routes import health, knowledge, quiz, report, study,user
 from app.core.config import get_settings
 from app.core.db import close_mysql_pool, init_mysql
 from app.core.exceptions import (
@@ -27,9 +27,9 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info("app_starting", host=settings.app_host, port=settings.app_port)
     if settings.mysql_auto_init:
-        await init_mysql()
-    yield
-    await close_mysql_pool()
+        await init_mysql()   # 启动时连上数据库
+    yield   # 中间过程系统一直运行
+    await close_mysql_pool()   # 关闭时断开数据库连接
     logger.info("app_shutting_down")
 
 
@@ -55,6 +55,7 @@ app.include_router(quiz.router, prefix="/api/v1")
 app.include_router(report.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1")
+app.include_router(study.router, prefix="/api/v1")
 
 
 # 全局异常处理

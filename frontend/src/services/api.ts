@@ -93,6 +93,31 @@ export async function request<T = any>(
   return body.data
 }
 
+/* ---- 学习建议模块 API ---- */
+export interface StudyClockReading{
+  current_time: string
+  time_zone: string
+  suggested_study_time: number
+  suggested_break_time: number
+  tip: string
+}
+
+export interface StudyAdviceData{
+  advice: string
+  clock: StudyClockReading | null
+  use_tools: string[]
+  degraded: boolean
+}
+
+export function getStudyAdice(userInput: string){
+  return request<StudyAdviceData>('/study/advice', {
+    method: 'POST',
+    data: {
+      user_input: userInput
+    },
+    timeout: 35000
+  })
+}
 /* ---- 核心业务 API ---- */
 
 /** 生成题库（异步任务模式） */
