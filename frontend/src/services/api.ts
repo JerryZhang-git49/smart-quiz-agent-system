@@ -96,9 +96,9 @@ export async function request<T = any>(
 /* ---- 学习建议模块 API ---- */
 export interface StudyClockReading{
   current_time: string
-  time_zone: string
-  suggested_study_time: number
-  suggested_break_time: number
+  timezone: string
+  suggested_study_minutes: number
+  suggested_break_minutes: number
   tip: string
 }
 
@@ -109,7 +109,7 @@ export interface StudyAdviceData{
   degraded: boolean
 }
 
-export function getStudyAdice(userInput: string){
+export function getStudyAdvice(userInput: string){
   return request<StudyAdviceData>('/study/advice', {
     method: 'POST',
     data: {

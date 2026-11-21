@@ -1,3 +1,5 @@
+import { getStudyAdvice } from '../../services/api'
+import type { StudyAdviceData } from '../../services/api'
 import { useState, useEffect, useCallback } from 'react'
 import { View, Text, Textarea, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
@@ -12,6 +14,9 @@ import type { UserBrief, QuizHistoryItem } from '../../services/api'
 import './index.scss'
 
 export default function IndexPage() {
+  const [adviceLoading, setAdviceLoading] = useState(false)
+
+  const [adviceData, setAdviceData] =useState<StudyAdviceData | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingText, setLoadingText] = useState('生成中...')
@@ -77,6 +82,37 @@ export default function IndexPage() {
       setLoadingText('生成中...')
     }
   }
+
+  const handleStudyAdvice = async () => {
+  if (adviceLoading) return
+
+  const text = inputValue.trim()
+
+  if (!text) {
+    Taro.showToast({
+      title: '请输入学习需求',
+      icon: 'none',
+    })
+    return
+  }
+
+  setAdviceLoading(true)
+  setAdviceData(null)
+
+  try {
+    const data = await getStudyAdvice(text)
+    setAdviceData(data)
+  } catch (error: unknown) {
+    Taro.showToast({
+      title: error instanceof Error
+        ? error.message
+        : '获取学习建议失败',
+      icon: 'none',
+    })
+  } finally {
+    setAdviceLoading(false)
+  }
+}
 
   return (
     <View className='index-page'>
@@ -183,6 +219,47 @@ export default function IndexPage() {
           <Text className='tip-text'>答对越多，经验值涨得越快哦</Text>
         </View>
       </View>
-    </View>
+
+    <View
+  className='btn-primary'
+  style={{ marginTop: '24px' }}
+  onClick={adviceLoading ? undefined : handleStudyAdvice}
+>
+  <Text>
+    {adviceLoading ? '正在安排学习计划...' : '获取学习建议'}
+  </Text>
+</View>
+
+{adviceData && (
+  <View
+    style={{
+      marginTop: '24px',
+      padding: '24px',
+      borderRadius: '16px',
+      background: '#fff7ed',
+    }}
+  >
+    {adviceData.clock && (
+      <View style={{ marginBottom: '16px' }}>
+        <Text style={{ display: 'block' }}>
+          当前时间：
+          {adviceData.clock.current_time.replace('T', ' ')}
+        </Text>
+
+        <Text style={{ display: 'block' }}>
+          时区：{adviceData.clock.timezone}
+        </Text>
+
+        <Text style={{ display: 'block' }}>
+          建议学习 {adviceData.clock.suggested_study_minutes} 分钟，
+          休息 {adviceData.clock.suggested_break_minutes} 分钟
+        </Text>
+      </View>
+    )}
+
+    <Text>{adviceData.advice}</Text>
+  </View>
+)}
+</View>
   )
 }
