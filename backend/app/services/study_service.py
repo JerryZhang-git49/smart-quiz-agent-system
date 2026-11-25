@@ -14,7 +14,7 @@ from app.prompts.study_prompt import STUDY_AGENT_SYSTEM_PROMPT
 from app.tools.learning_tools import build_time_tool
 
 
-logger = structlog.getlogger()
+logger = structlog.get_logger()
 
 def _build_agent(time_tool):
     return create_react_agent(
@@ -30,12 +30,11 @@ async def handle_study_advice(
     settings = get_settings()
 
     readings : list[StudyClockReading] = []
-    tool = build_time_tool(
-        timezone_name = settings.study_timezone,
-        onresult = readings.append,
-    )
-
     try:
+        tool = build_time_tool(
+            timezone_name=settings.study_timezone,
+            on_result=readings.append,
+        )
         agent = _build_agent(tool)
         result = await asyncio.wait_for(
             agent.ainvoke(
@@ -49,7 +48,7 @@ async def handle_study_advice(
                 },
                 config = {"recursion_limit": 8},
             ),
-            timeout = settings.study_agent_timeout_seconds
+            timeout=settings.study_advice_timeout_seconds,
         )
 
         messages = result.get("messages", [])
@@ -60,7 +59,7 @@ async def handle_study_advice(
                     tool_name = call.get("name"),
                 )
 
-        final_message = message[-1] if messages else None
+        final_message = messages[-1] if messages else None
 
         if(
             not isinstance(final_message, AIMessage)
@@ -74,9 +73,14 @@ async def handle_study_advice(
         return StudyAdviceResponse(
             advice = final_message.content.strip(),
             clock = readings[-1] if readings else None,
-            use_tools = (
+            used_tools = (
                 ["get_current_time_and_tip"] if readings else []
-            )
+            ),
+            degraded=not readings and any(
+                call.get("name") == "get_current_time_and_tip"
+                for message in messages
+                for call in getattr(message, "tool_calls", []) or []
+            ),
         )
 
     except Exception as exc:
@@ -97,14 +101,14 @@ async def handle_study_advice(
             )
         else:
             advice = (
-                "建议先选择一个小知识点，安排一轮短时学习，"
+                "暂时无法获取实时信息，建议先选择一个小知识点，安排一轮短时学习，"
                 "完成练习后休息，再根据状态决定是否继续。"
             )
 
         return StudyAdviceResponse(
             advice = advice,
             clock = clock,
-            use_tools = (
+            used_tools = (
                 ["get_current_time_and_tip"] if readings else []
             ),
             degraded = True,

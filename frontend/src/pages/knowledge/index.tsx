@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Textarea } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import {
   getKnowledgeDocuments,
@@ -26,6 +26,8 @@ export default function KnowledgePage() {
   const [uploading, setUploading] = useState(false)
   const [generatingDocId, setGeneratingDocId] = useState<string | null>(null)
   const [generatingText, setGeneratingText] = useState('生成中...')
+  const [focusDocument, setFocusDocument] = useState<KnowledgeDocumentItem | null>(null)
+  const [learningFocus, setLearningFocus] = useState('')
 
   const pollTimers = useRef<Record<string, ReturnType<typeof setInterval>>>({})
 
@@ -140,23 +142,33 @@ export default function KnowledgePage() {
 
   const handleStartQuiz = async (doc: KnowledgeDocumentItem) => {
     if (doc.status !== 'ready' || generatingDocId) return
-
+    const focus = learningFocus.trim()
+    if (focus.length > 500) {
+      Taro.showToast({ title: '学习重点请控制在 500 字以内', icon: 'none' })
+      return
+    }
     setGeneratingDocId(doc.doc_id)
-    setGeneratingText('正在创建任务...')
+    setFocusDocument(null)
+
     try {
-      const userInput = `请基于我上传的知识库文档《${doc.file_name}》生成一套闯关题`
+      const userInput = focus
+        ? `请基于我上传的知识库文档《${doc.file_name}》，围绕以下学习重点生成一套闯关题：${focus}`
+        : `请基于我上传的知识库文档《${doc.file_name}》生成一套综合闯关题，覆盖文档中的核心知识点。`
+
+      setGeneratingText('正在创建任务...')
       const { task_id } = await generateQuizAsync(userInput, 5, doc.doc_id)
-
-      setGeneratingText('AI 正在阅读知识库并生成题目...')
+      setGeneratingText('AI 正在阅读资料并生成题目...')
       const quizData = await pollQuizTask(task_id, (status) => {
-        if (status === 'running') setGeneratingText('AI 正在生成题目...')
+        if (status === 'running') setGeneratingText('AI 正在检索资料并生成题目...')
       })
-
       Taro.navigateTo({
-        url: `/pages/quiz/index?quizData=${encodeURIComponent(JSON.stringify(quizData))}`,
+        url: '/pages/quiz/index?quizData=' + encodeURIComponent(JSON.stringify(quizData)),
       })
-    } catch (err: any) {
-      Taro.showToast({ title: err.message || '生成失败，请稍后重试', icon: 'none' })
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: error instanceof Error ? error.message : '生成失败，请稍后重试',
+        icon: 'none',
+      })
     } finally {
       setGeneratingDocId(null)
       setGeneratingText('生成中...')
@@ -200,7 +212,11 @@ export default function KnowledgePage() {
                   {doc.status === 'ready' && (
                     <View
                       className={`quiz-btn ${generatingDocId === doc.doc_id ? 'is-loading' : ''}`}
-                      onClick={() => handleStartQuiz(doc)}
+                      onClick={() => {
+                        if (generatingDocId) return
+                        setLearningFocus('')
+                        setFocusDocument(doc)
+                      }}
                     >
                       <Text>{generatingDocId === doc.doc_id ? generatingText : '开始闯关'}</Text>
                     </View>
@@ -214,6 +230,29 @@ export default function KnowledgePage() {
           </View>
         )}
       </View>
+      {focusDocument && (
+        <View className='focus-mask'>
+          <View className='focus-dialog'>
+            <Text className='section-title'>设置学习重点</Text>
+            <Text className='focus-document'>{focusDocument.file_name}</Text>
+            <Textarea
+              className='focus-input'
+              value={learningFocus}
+              onInput={(event) => setLearningFocus(event.detail.value)}
+              maxlength={500}
+              placeholder='例如：Python 异常处理；留空则综合出题'
+            />
+            <View className='focus-actions'>
+              <View className='delete-btn' onClick={() => setFocusDocument(null)}>
+                <Text>取消</Text>
+              </View>
+              <View className='quiz-btn' onClick={() => handleStartQuiz(focusDocument)}>
+                <Text>开始出题</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

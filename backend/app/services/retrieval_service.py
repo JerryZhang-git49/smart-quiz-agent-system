@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 
 from app.core.config import get_settings
 
-from app.service import(
+from app.services import (
     rerank_service,
     vector_store_service,
 )
@@ -36,7 +36,7 @@ async def retrieve_documents(
             query=query,
             k=settings.kb_retrieve_top_k
         )
-    final_k = settings.kb_rerank_top_k
+    final_k = settings.kb_rerank_k
     # 防止召回数量小于最终需要的向量数量
     recall_k = max(settings.kb_recall_k, final_k)
 
@@ -65,7 +65,7 @@ async def retrieve_documents(
         )
 
         if not hits:
-            raise ValueError("重排结果未空")
+            raise ValueError("重排结果为空")
 
         # 按索引返回原始Documents。保留全部元数据
         selected_documents = [

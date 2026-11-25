@@ -32,38 +32,48 @@ def mock_settings_web_disabled():
 
 
 class TestKnowledgeBaseTool:
-    def test_returns_joined_content_on_success(self):
+    @pytest.mark.asyncio
+    async def test_returns_joined_content_on_success(self):
         docs = [
-            Document(page_content="片段一"),
-            Document(page_content="片段二"),
+            Document(page_content="片段一", metadata={"page": 0}),
+            Document(page_content="片段二", metadata={"page": 2}),
         ]
         with patch(
-            "app.services.rag_service.vector_store_service.similarity_search",
+            "app.services.rag_service.retrieval_service.retrieve_documents",
+            new_callable=AsyncMock,
             return_value=docs,
-        ):
+        ) as retrieve:
             tool = rag_service._build_knowledge_base_tool(user_id=1, doc_id="doc_1")
-            result = tool.invoke({"query": "test"})
+            result = await tool.ainvoke({"query": "Python 异常处理"})
+
+        retrieve.assert_awaited_once_with(user_id=1, doc_id="doc_1", query="Python 异常处理")
 
         assert "片段一" in result
         assert "片段二" in result
+        assert "页码 1" in result
+        assert "页码 3" in result
 
-    def test_returns_fallback_when_empty(self):
+    @pytest.mark.asyncio
+    async def test_returns_fallback_when_empty(self):
         with patch(
-            "app.services.rag_service.vector_store_service.similarity_search",
+            "app.services.rag_service.retrieval_service.retrieve_documents",
+            new_callable=AsyncMock,
             return_value=[],
         ):
             tool = rag_service._build_knowledge_base_tool(user_id=1, doc_id="doc_1")
-            result = tool.invoke({"query": "test"})
+            result = await tool.ainvoke({"query": "test"})
 
         assert "未检索到相关内容" in result
 
-    def test_returns_fallback_on_exception(self):
+    @pytest.mark.asyncio
+    async def test_returns_fallback_on_exception(self):
         with patch(
-            "app.services.rag_service.vector_store_service.similarity_search",
+            "app.services.rag_service.retrieval_service.retrieve_documents",
+            new_callable=AsyncMock,
             side_effect=RuntimeError("chroma error"),
         ):
             tool = rag_service._build_knowledge_base_tool(user_id=1, doc_id="doc_1")
-            result = tool.invoke({"query": "test"})
+            result = await tool.ainvoke({"query": "test"})
 
         assert "检索失败" in result
 

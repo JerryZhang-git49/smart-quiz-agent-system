@@ -14,4 +14,4 @@ async def study_advice(req: StudyAdviceRequest):
     if not check_content(req.user_input):
         raise ContentFilterError()
     result = await handle_study_advice(req.user_input)
-    return ApiResponse(data=result.model_dump())
+    return ApiResponse.success(data=result.model_dump())

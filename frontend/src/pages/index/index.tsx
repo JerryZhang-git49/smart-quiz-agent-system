@@ -1,22 +1,21 @@
-import { getStudyAdvice } from '../../services/api'
-import type { StudyAdviceData } from '../../services/api'
 import { useState, useEffect, useCallback } from 'react'
 import { View, Text, Textarea, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { 
-  generateQuizAsync,      // ← 创建异步生成任务
-  pollQuizTask,           // ← 轮询任务状态
-  getCachedUser,          // ← 获取缓存的用户信息
-  getQuizHistory,         // ← 获取闯关历史
-  waitForLogin            // ← 等待登录完成
+import {
+  generateQuizAsync,
+  pollQuizTask,
+  getCachedUser,
+  getQuizHistory,
+  getStudyAdvice,
+  waitForLogin,
 } from '../../services/api'
-import type { UserBrief, QuizHistoryItem } from '../../services/api'
+import type { UserBrief, QuizHistoryItem, StudyAdviceData } from '../../services/api'
 import './index.scss'
 
 export default function IndexPage() {
   const [adviceLoading, setAdviceLoading] = useState(false)
 
-  const [adviceData, setAdviceData] =useState<StudyAdviceData | null>(null)
+  const [adviceData, setAdviceData] = useState<StudyAdviceData | null>(null)
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingText, setLoadingText] = useState('生成中...')
@@ -47,6 +46,7 @@ export default function IndexPage() {
   })
 
   const handleGenerate = async () => {
+    if (loading || adviceLoading) return
     const trimmed = inputValue.trim()
     if (!trimmed) {
       Taro.showToast({ title: '请输入学习内容', icon: 'none' })
@@ -84,35 +84,26 @@ export default function IndexPage() {
   }
 
   const handleStudyAdvice = async () => {
-  if (adviceLoading) return
+    if (adviceLoading || loading) return
+    const text = inputValue.trim()
+    if (!text || text.length > 500) {
+      Taro.showToast({ title: '请输入 1～500 字的学习需求', icon: 'none' })
+      return
+    }
 
-  const text = inputValue.trim()
-
-  if (!text) {
-    Taro.showToast({
-      title: '请输入学习需求',
-      icon: 'none',
-    })
-    return
+    setAdviceLoading(true)
+    setAdviceData(null)
+    try {
+      setAdviceData(await getStudyAdvice(text))
+    } catch (error: unknown) {
+      Taro.showToast({
+        title: error instanceof Error ? error.message : '获取学习建议失败',
+        icon: 'none',
+      })
+    } finally {
+      setAdviceLoading(false)
+    }
   }
-
-  setAdviceLoading(true)
-  setAdviceData(null)
-
-  try {
-    const data = await getStudyAdvice(text)
-    setAdviceData(data)
-  } catch (error: unknown) {
-    Taro.showToast({
-      title: error instanceof Error
-        ? error.message
-        : '获取学习建议失败',
-      icon: 'none',
-    })
-  } finally {
-    setAdviceLoading(false)
-  }
-}
 
   return (
     <View className='index-page'>
@@ -166,7 +157,7 @@ export default function IndexPage() {
         <View className='input-actions'>
           <View
             className={`btn-primary generate-btn ${loading ? 'is-loading' : ''}`}
-            onClick={!loading ? handleGenerate : undefined}
+            onClick={!loading && !adviceLoading ? handleGenerate : undefined}
           >
             {loading ? (
               <Text>{loadingText}</Text>
@@ -178,7 +169,33 @@ export default function IndexPage() {
             )}
           </View>
         </View>
+        <View
+          className={`study-advice-btn ${adviceLoading ? 'is-loading' : ''}`}
+          onClick={!loading && !adviceLoading ? handleStudyAdvice : undefined}
+        >
+          <Text>{adviceLoading ? '正在安排学习计划...' : '获取学习建议'}</Text>
+        </View>
       </View>
+
+      {adviceData && (
+        <View className='study-advice-card'>
+          <Text className='study-advice-title'>本次学习建议</Text>
+          {adviceData.clock && (
+            <View className='study-clock'>
+              <Text>查询时间：{adviceData.clock.current_time.replace('T', ' ')}</Text>
+              <Text>时区：{adviceData.clock.timezone}</Text>
+              <Text>
+                建议学习 {adviceData.clock.suggested_study_minutes} 分钟，
+                休息 {adviceData.clock.suggested_break_minutes} 分钟
+              </Text>
+            </View>
+          )}
+          <Text className='study-advice-text'>{adviceData.advice}</Text>
+          {adviceData.degraded && (
+            <Text className='study-advice-notice'>当前为备用建议，你可以稍后再试。</Text>
+          )}
+        </View>
+      )}
 
       {/* 已完成关卡 */}
       {historyItems.length > 0 && (
@@ -220,46 +237,6 @@ export default function IndexPage() {
         </View>
       </View>
 
-    <View
-  className='btn-primary'
-  style={{ marginTop: '24px' }}
-  onClick={adviceLoading ? undefined : handleStudyAdvice}
->
-  <Text>
-    {adviceLoading ? '正在安排学习计划...' : '获取学习建议'}
-  </Text>
-</View>
-
-{adviceData && (
-  <View
-    style={{
-      marginTop: '24px',
-      padding: '24px',
-      borderRadius: '16px',
-      background: '#fff7ed',
-    }}
-  >
-    {adviceData.clock && (
-      <View style={{ marginBottom: '16px' }}>
-        <Text style={{ display: 'block' }}>
-          当前时间：
-          {adviceData.clock.current_time.replace('T', ' ')}
-        </Text>
-
-        <Text style={{ display: 'block' }}>
-          时区：{adviceData.clock.timezone}
-        </Text>
-
-        <Text style={{ display: 'block' }}>
-          建议学习 {adviceData.clock.suggested_study_minutes} 分钟，
-          休息 {adviceData.clock.suggested_break_minutes} 分钟
-        </Text>
-      </View>
-    )}
-
-    <Text>{adviceData.advice}</Text>
-  </View>
-)}
-</View>
+    </View>
   )
 }

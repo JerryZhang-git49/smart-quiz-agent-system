@@ -212,6 +212,60 @@
   font-size: 32px;
 }
 
+.study-advice-btn {
+  margin-top: 20px;
+  padding: 22px;
+  border: 2px solid #f0d7c2;
+  border-radius: 24px;
+  text-align: center;
+  color: #9b4b20;
+  background: #fff7ed;
+  font-size: 28px;
+}
+
+.study-advice-btn.is-loading {
+  opacity: 0.7;
+}
+
+.study-advice-card {
+  margin-top: 24px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 2px solid #f0d7c2;
+  background: #fff7ed;
+}
+
+.study-advice-title {
+  display: block;
+  margin-bottom: 18px;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.study-clock {
+  margin-bottom: 18px;
+  color: #7b542f;
+  font-size: 24px;
+  line-height: 1.7;
+
+  text {
+    display: block;
+  }
+}
+
+.study-advice-text {
+  font-size: 28px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.study-advice-notice {
+  display: block;
+  margin-top: 18px;
+  color: #806848;
+  font-size: 24px;
+}
+
 /* 关卡卡片网格 */
 .cards-grid {
   display: grid;

@@ -7,7 +7,7 @@ import structlog
 
 from app.core.config import get_settings
 from app.prompts.rag_prompt import RAG_AGENT_SYSTEM_PROMPT
-from app.services import vector_store_service
+from app.services import retrieval_service
 
 logger = structlog.get_logger()
 
@@ -19,23 +19,52 @@ def _build_knowledge_base_tool(user_id: int, doc_id: str):
     """构建限定 user_id/doc_id 的知识库检索工具"""
     from langchain_core.tools import tool
 
-    @tool   # 将原本的函数包装成LangChain专属的Tool对象，方便Agent调用
-    def search_knowledge_base(query: str) -> str:
-        # 这里的文字会转变为Tool对象的description，Agent在调用时会显示给模型，提示模型如何使用该工具
-        """在用户上传的私有知识库文档中检索与 query 最相关的内容片段，返回拼接后的文本。"""
+    @tool
+    async def search_knowledge_base(query: str) -> str:
+        """检索当前文档中与具体学习主题相关的内容。
+
+        query 应包含实际知识点，例如：
+        Python 异常处理、try/except/finally 的区别。
+        不要只传入文件名或“生成一套题”。
+        """
         try:
-            docs = vector_store_service.similarity_search(user_id=user_id, doc_id=doc_id, query=query)
-        except Exception as e:
-            logger.warning("kb_retrieval_failed", user_id=user_id, doc_id=doc_id, error=str(e))
-            return "知识库检索失败，未获取到内容。"
+            documents = await retrieval_service.retrieve_documents(
+                user_id=user_id,
+                doc_id=doc_id,
+                query=query,
+            )
+        except Exception as exc:
+            logger.warning(
+                "kb_retrieval_failed",
+                user_id=user_id,
+                doc_id=doc_id,
+                error_type=type(exc).__name__,
+            )
+            return "知识库检索失败，未获取到内容"
 
-        if not docs:
-            return "知识库中未检索到相关内容。"
+        if not documents:
+            return "知识库中未检索到相关内容"
 
-        return "\n\n".join(doc.page_content for doc in docs)
+        sections = []
 
-    return search_knowledge_base  # 闭包，返回一个函数对象，函数内部引用了 user_id 和 doc_id，确保检索工具只能访问指定用户和文档的知识库内容
+        for index, document in enumerate(documents, start=1):
+            # PyPDFLoader 的 page 通常从 0 开始
+            page = document.metadata.get("page")
 
+            page_label = (
+                str(page + 1)
+                if isinstance(page, int)
+                else "未知"
+            )
+
+            sections.append(
+                f"[片段 {index}，文档 {doc_id}，页码 {page_label}]\n"
+                f"{document.page_content}"
+            )
+
+        return "\n\n".join(sections)
+
+    return search_knowledge_base
 
 def _build_agent(user_id: int, doc_id: str):
     """构建知识获取 Agent：知识库检索工具 +（可选）联网搜索工具"""

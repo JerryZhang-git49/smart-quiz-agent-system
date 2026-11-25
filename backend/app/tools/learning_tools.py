@@ -61,7 +61,7 @@ def build_time_tool(
     on_result 保存工具的真实结果，供接口直接返回。
     """
     @tool
-    def get_current_time_and_tip() -> dict:
+    async def get_current_time_and_tip() -> dict:
         """查询配置时区的真实当前时间，并提供基础学习时长和休息建议。
 
         用户询问现在几点、当前日期，或需要结合当前时段安排学习时使用。

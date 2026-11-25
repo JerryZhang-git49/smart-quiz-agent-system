@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1.routes import health, knowledge, quiz, report, study,user
+from app.api.v1.routes import health, knowledge, quiz, report, study, user
 from app.core.config import get_settings
 from app.core.db import close_mysql_pool, init_mysql
 from app.core.exceptions import (

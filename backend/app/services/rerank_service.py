@@ -31,17 +31,14 @@ async def rerank(
         return []
 
     if not query.strip():
-        raise ValueError("重拍query不能为空")
+        raise ValueError("重排 query 不能为空")
 
     if top_k < 1:
         raise ValueError("top_k必须大于0")
 
     settings = get_settings()
 
-    api_key = (
-        settings.rerank_api_key
-        or settings.dashscope_api_key
-    ).strip()
+    api_key = settings.rerank_api_key.strip() or settings.dashscope_api_key.strip()
 
     if not api_key:
         raise ValueError("未配置 Rerank API Key")
@@ -63,9 +60,8 @@ async def rerank(
         },
     }
 
-    # HTTP 超时限制单个网络阶段；
-    # asyncio.timeout 限制整个重排调用的总等待时间。
-    async with asyncio.timeout(timeout_seconds):
+    # wait_for 限制整个 HTTP 调用的预算，同时兼容 Python 3.10。
+    async def request_rerank() -> RerankResponse:
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(
                 timeout_seconds,
@@ -83,20 +79,20 @@ async def rerank(
 
             response.raise_for_status()
 
-            parsed = RerankResponse.model_validate(
-                response.json()
-            )
+            return RerankResponse.model_validate(response.json())
+
+    parsed = await asyncio.wait_for(request_rerank(), timeout=timeout_seconds)
 
     hits = parsed.output.results
 
-    if not hits:
-        raise ValueError("Rerank返回空结果")
+    if len(hits) < limit:
+        raise ValueError("Rerank 返回结果不足")
 
     seen_indices: set[int] = set()
 
     for hit in hits:
         if hit.index >= len(documents):
-            raise ValueError("Rerank返回了空结果")
+            raise ValueError("Rerank 返回了越界索引")
         if hit.index in seen_indices:
             raise ValueError("Rerank返回了重复索引")
 

@@ -1,13 +1,13 @@
 """学习建议请求和响应模型。"""
-from pydantic import BaseModel, Field,field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class StudyAdviceRequest(BaseModel):
     """学习建议请求"""
-    user_input : str = Field(min_length=1, max_length=500)
+    user_input: str = Field(min_length=1, max_length=500)
 
     @field_validator('user_input')
     @classmethod
-    def validate_user_input(cls, value):
+    def validate_user_input(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("学习要求不能为空")
@@ -28,6 +28,8 @@ class StudyClockReading(BaseModel):
 
 class StudyAdviceResponse(BaseModel):
     """学习建议响应"""
+    # 让内部字段名拼写错误及时暴露，防止工具链字段被静默丢弃。
+    model_config = ConfigDict(extra="forbid")
     advice : str
     # 时间数据直接来自工具
     clock : StudyClockReading | None = None

@@ -94,7 +94,7 @@ export async function request<T = any>(
 }
 
 /* ---- 学习建议模块 API ---- */
-export interface StudyClockReading{
+export interface StudyClockReading {
   current_time: string
   timezone: string
   suggested_study_minutes: number
@@ -102,20 +102,21 @@ export interface StudyClockReading{
   tip: string
 }
 
-export interface StudyAdviceData{
+export interface StudyAdviceData {
   advice: string
   clock: StudyClockReading | null
-  use_tools: string[]
+  used_tools: string[]
   degraded: boolean
 }
 
-export function getStudyAdvice(userInput: string){
+export function getStudyAdvice(userInput: string) {
   return request<StudyAdviceData>('/study/advice', {
     method: 'POST',
     data: {
-      user_input: userInput
+      user_input: userInput,
     },
-    timeout: 35000
+    // 后端总等待时间可配置到 60 秒，留出返回兜底响应的余量。
+    timeout: 65000,
   })
 }
 /* ---- 核心业务 API ---- */

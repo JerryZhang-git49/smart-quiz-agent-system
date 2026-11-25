@@ -17,16 +17,16 @@ class Settings(BaseSettings):
     )
 
     # Rerank
-    enable_rerank: bool = False   # 是否启用 Rerank（重排序）功能。启用后，模型会对生成的题目进行排序，优先返回更符合用户需求的题目。
+    enable_rerank: bool = False   # 对召回的文档片段重排；不改变生成题目的顺序
 
     # 第一阶段：向量召回数量
-    kb_recall_k : int = Field(default = 10, gt = 0, le = 100)
+    kb_recall_k : int = Field(default = 20, gt = 0, le = 100)
 
     # 第二阶段：Rerank 之后的最终返回数量
-    kb_rerank_k : int = Field(default = 4, gt = 0, le = 100)
+    kb_rerank_k : int = Field(default = 3, gt = 0, le = 100)
 
     # Rerank模型
-    rerank_model: str = "gte_rerank"
+    rerank_model: str = "gte-rerank"
 
     # 百炼原生 Rerank 接口，不是 Embedding 的 compatible-mode 地址
     rerank_api_url: str = (
